@@ -3,25 +3,17 @@
   "version": "1.0.0",
   "description": "Training Company Management Dashboard",
   "scripts": {
-    "start": "node backend/src/server.js",
-    "build": "npm run install:backend && npm run generate:prisma && npm run install:frontend && npm run build:frontend",
+    "start": "cd backend && npx prisma migrate deploy && npx prisma generate && node src/server.js",
+    "build": "npm run install:backend && npm run install:frontend && npm run build:frontend",
     "install:backend": "cd backend && npm ci --omit=dev",
-    "generate:prisma": "cd backend && npx prisma generate",
     "install:frontend": "cd frontend && npm ci",
     "build:frontend": "cd frontend && npm run build",
-    "migrate": "cd backend && npx prisma migrate deploy",
-    "migrate:safe": "cd backend && if [ -n \"$DATABASE_URL\" ]; then npx prisma migrate deploy; else echo 'Skipping migrations - DATABASE_URL not available'; fi",
-    "seed": "cd backend && npx prisma db seed",
     "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "postinstall": "npm run migrate:safe"
+    "dev:frontend": "cd frontend && npm run dev"
   },
   "engines": {
     "node": "20.x",
     "npm": "10.x"
   },
-  "main": "backend/src/server.js",
-  "keywords": ["torn-city", "training", "dashboard"],
-  "author": "Training Company Development Team",
-  "license": "MIT"
+  "main": "backend/src/server.js"
 }
