@@ -6,6 +6,7 @@
 
 const express = require('express');
 const clientRoutes = require('./client');
+const adminRoutes = require('./admin');
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ const router = express.Router();
  * Mount route modules
  */
 router.use('/client', clientRoutes);
+router.use('/admin', adminRoutes);
 
 /**
  * API information endpoint
@@ -34,8 +36,20 @@ router.get('/', (req, res) => {
         stats: 'GET /api/client/stats/:tornId - Get work stats',
         health: 'GET /api/client/health - Client API health check'
       },
-      admin: '/api/admin/* - Admin endpoints (coming soon)',
+      admin: {
+        login: 'POST /api/admin/login - Admin authentication',
+        dashboard: 'GET /api/admin/dashboard - Admin dashboard (auth required)',
+        users: 'GET /api/admin/users - List all users (auth required)',
+        assignTraining: 'POST /api/admin/users/:id/training - Assign training (auth required)',
+        updateProgress: 'PUT /api/admin/users/:id/training/progress - Update progress (auth required)',
+        stats: 'GET /api/admin/stats - Get statistics (auth required)',
+        health: 'GET /api/admin/health - Admin API health check'
+      },
       discord: '/api/discord/* - Discord integration (coming soon)'
+    },
+    authentication: {
+      admin: 'JWT Bearer token required for admin endpoints',
+      client: 'No authentication required for client endpoints'
     },
     documentation: 'https://github.com/your-username/training-company-app/docs'
   });

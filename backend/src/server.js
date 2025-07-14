@@ -157,7 +157,9 @@ app.use('*', (req, res) => {
             'GET /db-status - Database status', 
             'GET /api - API documentation',
             'POST /api/client/verify - Verify API key',
-            'GET /api/client/dashboard/:tornId - User dashboard'
+            'GET /api/client/dashboard/:tornId - User dashboard',
+            'POST /api/admin/login - Admin login',
+            'GET /api/admin/dashboard - Admin dashboard'
         ]
     });
 });
@@ -210,6 +212,9 @@ const server = app.listen(PORT, async () => {
     try {
         const userService = require('./services/userService');
         await userService.testService();
+        
+        const adminService = require('./services/adminService');
+        await adminService.testService();
         
         const tornAPI = require('./services/tornAPI');
         await tornAPI.testConnection();
