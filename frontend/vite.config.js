@@ -1,10 +1,11 @@
 /**
- * Vite Configuration for Training Company Frontend
+ * Vite Configuration for Training Company Frontend (Vite 5.x)
  * 
  * Configuration for Vite build tool including React plugin setup,
  * development server configuration, and build optimization settings.
+ * Updated for Vite 5.x and Node 20 compatibility.
  * 
- * @fileoverview Vite configuration for React development and production builds
+ * @fileoverview Vite 5.x configuration for React development and production builds
  */
 
 import { defineConfig } from 'vite';
@@ -12,7 +13,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 /**
- * Vite configuration
+ * Vite configuration for Node 20 + Vite 5.x
  * 
  * @see https://vitejs.dev/config/
  */
@@ -28,7 +29,7 @@ export default defineConfig({
   
   // Development server configuration
   server: {
-    port: 5173, // Use Vite's default port
+    port: 5173, // Vite 5.x default port
     host: true, // Allow external connections (useful for mobile testing)
     open: true, // Automatically open browser
     cors: true,
@@ -38,7 +39,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        // Log proxy requests in development
+        // Configure proxy with better error handling
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
             console.log('Proxy error:', err);
@@ -46,8 +47,16 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq, req, res) => {
             console.log('Proxying request:', req.method, req.url);
           });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('Proxy response:', proxyRes.statusCode, req.url);
+          });
         }
       }
+    },
+    // Watch options for better performance
+    watch: {
+      usePolling: false,
+      interval: 100
     }
   },
 
@@ -55,7 +64,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // Optimize chunk splitting
+    // Modern target for better performance with Node 20
+    target: 'esnext',
+    // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {
         manualChunks: {
@@ -68,17 +79,15 @@ export default defineConfig({
     },
     // Bundle size warning threshold
     chunkSizeWarningLimit: 1000,
-    // Minification settings
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console logs in production
-        drop_debugger: true // Remove debugger statements
-      }
-    }
+    // Enhanced minification for production
+    minify: 'esbuild', // Faster than terser, better with Vite 5
+    // Report compressed size
+    reportCompressedSize: true,
+    // Enhanced CSS code splitting
+    cssCodeSplit: true
   },
 
-  // Path resolution
+  // Path resolution with enhanced alias support
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -94,7 +103,11 @@ export default defineConfig({
   // CSS configuration
   css: {
     postcss: './postcss.config.js',
-    devSourcemap: true
+    devSourcemap: true,
+    // CSS modules configuration (if needed in future)
+    modules: {
+      localsConvention: 'camelCase'
+    }
   },
 
   // Environment variables configuration
@@ -104,22 +117,37 @@ export default defineConfig({
   preview: {
     port: 5173,
     host: true,
-    open: true
+    open: true,
+    cors: true
   },
 
-  // Optimization settings
+  // Optimization settings for better performance
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'react-router-dom',
       'axios'
-    ]
+    ],
+    // Force optimization of these packages
+    force: true
   },
+
+  // Enhanced logging configuration
+  logLevel: 'info',
+  clearScreen: false,
 
   // Define global constants
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString())
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __NODE_VERSION__: JSON.stringify(process.version)
+  },
+
+  // Enhanced esbuild configuration for better performance
+  esbuild: {
+    target: 'esnext',
+    platform: 'browser',
+    format: 'esm'
   }
 });

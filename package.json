@@ -1,0 +1,22 @@
+{
+  "name": "training-company-app",
+  "version": "1.0.0",
+  "description": "Training Company Management Dashboard",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "build": "cd frontend && npm install && npm run build",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "migrate": "cd backend && npx prisma migrate deploy",
+    "seed": "cd backend && npx prisma db seed",
+    "deploy": "npm run install:backend && npm run install:frontend && npm run migrate"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+  "main": "backend/src/server.js",
+  "keywords": ["torn-city", "training", "dashboard"],
+  "author": "Your Name",
+  "license": "MIT"
+}

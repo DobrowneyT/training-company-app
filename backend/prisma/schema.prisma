@@ -1,181 +1,74 @@
-// Prisma database schema for Training Company Application
-// Defines all database models, relationships, and constraints
-// Version 1.0.0
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// User model - Represents Torn City users registered with the training company
 model User {
-  /// Unique identifier for the user
-  id String @id @default(cuid())
-
-  /// Torn City user ID (unique across platform)
-  tornId Int @unique
-
-  /// User's display name from Torn City
-  name String
-
-  /// Encrypted API key for Torn City API access
-  apiKey String
-
-  /// Optional Discord user ID for bot integration
-  discordId String? @unique
-
-  /// Whether the user account is active
-  isActive Boolean @default(true)
-
-  /// Timestamp when user was created
-  createdAt DateTime @default(now())
-
-  /// Timestamp when user was last updated
-  updatedAt DateTime @updatedAt
-
+  id          String   @id @default(cuid())
+  tornId      Int      @unique
+  name        String
+  apiKey      String   // Encrypted
+  discordId   String?  @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
   // Relations
-  /// Training assignments for this user
-  training Training[]
-
-  /// Training session history for this user
-  sessions TrainingSession[]
-
+  training    Training[]
+  sessions    TrainingSession[]
+  
   @@map("users")
 }
 
-// Training model - Represents active training assignments
 model Training {
-  /// Unique identifier for the training assignment
-  id String @id @default(cuid())
-
-  /// Foreign key to the user this training belongs to
-  userId String
-
-  /// Current stat being trained (Manual Labor, Intelligence, Endurance, Not Assigned)
-  currentStat String
-
-  /// Number of training sessions remaining
-  trainsRemaining Int @default(0)
-
-  /// Optional target level to reach
-  targetLevel Int?
-
-  /// Optional notes about the training assignment
-  notes String?
-
-  /// Whether this training assignment is currently active
-  isActive Boolean @default(true)
-
-  /// Timestamp when training was created
-  createdAt DateTime @default(now())
-
-  /// Timestamp when training was last updated
-  updatedAt DateTime @updatedAt
-
+  id              String   @id @default(cuid())
+  userId          String
+  currentStat     String   // "Manual Labor", "Intelligence", "Endurance", "Not Assigned"
+  trainsRemaining Int      @default(0)
+  targetLevel     Int?
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
   // Relations
-  /// User this training assignment belongs to
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  /// Training sessions associated with this assignment
-  sessions TrainingSession[]
-
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions        TrainingSession[]
+  
   @@map("training")
 }
 
-// TrainingSession model - Represents individual training events and history
 model TrainingSession {
-  /// Unique identifier for the session
-  id String @id @default(cuid())
-
-  /// Foreign key to the user
-  userId String
-
-  /// Optional foreign key to the training assignment
+  id        String   @id @default(cuid())
+  userId    String
   trainingId String?
-
-  /// Type of session (completed, payment_received, assignment_created, stats_updated, user_registered)
-  type String
-
-  /// Optional JSON string for additional session data
-  details String?
-
-  /// Optional notes about the session
-  notes String?
-
-  /// Timestamp when session was created
+  type      String   // "completed", "payment_received", "assignment_created", "stats_updated"
+  details   String?  // JSON string for additional data
+  notes     String?
   createdAt DateTime @default(now())
-
+  
   // Relations
-  /// User this session belongs to
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  /// Optional training assignment this session is related to
-  training Training? @relation(fields: [trainingId], references: [id], onDelete: SetNull)
-
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  training  Training? @relation(fields: [trainingId], references: [id], onDelete: SetNull)
+  
   @@map("training_sessions")
 }
 
-// AdminUser model - Represents administrators who can manage the system
 model AdminUser {
-  /// Unique identifier for the admin user
-  id String @id @default(cuid())
-
-  /// Unique username for admin login
-  username String @unique
-
-  /// Optional email address
-  email String? @unique
-
-  /// Hashed password using bcrypt
-  password String
-
-  /// Optional Discord user ID for admin
-  discordId String? @unique
-
-  /// Admin role (for future role-based permissions)
-  role String @default("admin")
-
-  /// Whether the admin account is active
-  isActive Boolean @default(true)
-
-  /// Timestamp of last login
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String?  @unique
+  password  String   // Hashed with bcrypt
+  discordId String?  @unique
+  role      String   @default("admin")
+  isActive  Boolean  @default(true)
   lastLogin DateTime?
-
-  /// Timestamp when admin was created
   createdAt DateTime @default(now())
-
-  /// Timestamp when admin was last updated
   updatedAt DateTime @updatedAt
-
+  
   @@map("admin_users")
-}
-
-// SystemLog model - For tracking system events and auditing
-model SystemLog {
-  /// Unique identifier for the log entry
-  id String @id @default(cuid())
-
-  /// Log level (info, warn, error, debug)
-  level String
-
-  /// Log message
-  message String
-
-  /// Optional additional data as JSON string
-  data String?
-
-  /// Source of the log (api, discord, cron)
-  source String @default("api")
-
-  /// Optional user ID if action was performed by a user
-  userId String?
-
-  /// Timestamp when log entry was created
-  createdAt DateTime @default(now())
-
-  @@map("system_logs")
 }
