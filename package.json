@@ -10,10 +10,11 @@
     "install:frontend": "cd frontend && npm ci",
     "build:frontend": "cd frontend && npm run build",
     "migrate": "cd backend && npx prisma migrate deploy",
+    "migrate:safe": "cd backend && if [ -n \"$DATABASE_URL\" ]; then npx prisma migrate deploy; else echo 'Skipping migrations - DATABASE_URL not available'; fi",
     "seed": "cd backend && npx prisma db seed",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "postbuild": "npm run migrate"
+    "postinstall": "npm run migrate:safe"
   },
   "engines": {
     "node": "20.x",
