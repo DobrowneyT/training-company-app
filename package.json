@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "description": "Training Company Management Dashboard",
   "scripts": {
-    "start": "cd backend && npm run start:fresh",
+    "start": "cd backend && npm start",
     "build": "npm run install:backend && npm run install:frontend && npm run build:frontend",
     "install:backend": "cd backend && npm ci --omit=dev",
-    "install:frontend": "cd frontend && npm ci",
+    "install:frontend": "cd frontend && npm ci", 
     "build:frontend": "cd frontend && npm run build",
+    "dev": "npm run dev:backend",
     "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev"
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:both": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "setup": "cd backend && npm run db:setup"
   },
   "engines": {
     "node": "20.x",
