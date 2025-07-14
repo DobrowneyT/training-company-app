@@ -1,5 +1,3 @@
-# Update root package.json with Prisma client generation
-cat > package.json << 'EOF'
 {
   "name": "training-company-app",
   "version": "1.0.0",
@@ -26,4 +24,3 @@ cat > package.json << 'EOF'
   "author": "Training Company Development Team",
   "license": "MIT"
 }
-EOF
