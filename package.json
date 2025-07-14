@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Training Company Management Dashboard",
   "scripts": {
-    "start": "cd backend && npx prisma migrate deploy && npx prisma generate && node src/server.js",
+    "start": "cd backend && npm run start:fresh",
     "build": "npm run install:backend && npm run install:frontend && npm run build:frontend",
     "install:backend": "cd backend && npm ci --omit=dev",
     "install:frontend": "cd frontend && npm ci",

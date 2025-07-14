@@ -5,12 +5,15 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:production": "npx prisma migrate deploy && npx prisma generate && npx prisma db seed && node src/server.js",
+    "start:fresh": "npx prisma db push && npx prisma generate && npx prisma db seed && node src/server.js",
     "dev": "nodemon src/server.js",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
+    "db:studio": "prisma studio", 
     "db:generate": "prisma generate",
     "db:seed": "node prisma/seed.js",
     "db:reset": "prisma migrate reset",
+    "db:push": "prisma db push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
