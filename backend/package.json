@@ -1,0 +1,44 @@
+{
+  "name": "training-company-backend",
+  "version": "1.0.0",
+  "description": "Backend API server for Training Company Management Application",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "db:seed": "node prisma/seed.js",
+    "db:reset": "prisma migrate reset",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "torn-city",
+    "training-company",
+    "api",
+    "express",
+    "prisma"
+  ],
+  "author": "Your Name",
+  "license": "PRIVATE",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1",
+    "prisma": "^5.2.0",
+    "@prisma/client": "^5.2.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.14.2",
+    "socket.io": "^4.7.2",
+    "crypto-js": "^4.1.1",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "@types/node": "^20.5.0"
+  }
+}
