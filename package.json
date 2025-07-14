@@ -1,15 +1,21 @@
+# Update root package.json with Prisma client generation
+cat > package.json << 'EOF'
 {
   "name": "training-company-app",
   "version": "1.0.0",
   "description": "Training Company Management Dashboard",
   "scripts": {
     "start": "node backend/src/server.js",
-    "build": "cd frontend && npm install && npm run build",
-    "install:backend": "cd backend && npm install",
-    "install:frontend": "cd frontend && npm install",
+    "build": "npm run install:backend && npm run generate:prisma && npm run install:frontend && npm run build:frontend",
+    "install:backend": "cd backend && npm ci --omit=dev",
+    "generate:prisma": "cd backend && npx prisma generate",
+    "install:frontend": "cd frontend && npm ci",
+    "build:frontend": "cd frontend && npm run build",
     "migrate": "cd backend && npx prisma migrate deploy",
     "seed": "cd backend && npx prisma db seed",
-    "deploy": "npm run install:backend && npm run install:frontend && npm run migrate"
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "postbuild": "npm run migrate"
   },
   "engines": {
     "node": "20.x",
@@ -17,6 +23,7 @@
   },
   "main": "backend/src/server.js",
   "keywords": ["torn-city", "training", "dashboard"],
-  "author": "Your Name",
+  "author": "Training Company Development Team",
   "license": "MIT"
 }
+EOF
