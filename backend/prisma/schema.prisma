@@ -159,3 +159,15 @@ model AdminUser {
   
   @@map("admin_users")
 }
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String   // "info", "warn", "error", "debug"
+  message   String
+  data      String?  // JSON string for additional data
+  source    String   // "api", "admin", "system", etc.
+  userId    String?  // Optional user ID if action is user-related
+  createdAt DateTime @default(now())
+  
+  @@map("system_logs")
+}
