@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (keep .env.local private)
+.env.local
+.env.*.local
+
+# But allow committed env files
+!.env.development
+!.env.production

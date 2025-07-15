@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - Git
 - Text editor (VS Code recommended)
 
