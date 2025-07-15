@@ -42,7 +42,7 @@ model Company {
   tornId      Int      @unique  // Company ID from Torn API
   name        String
   companyType Int      // Company type number from Torn API
-  ownerId     String   @unique // References User.id (director)
+  ownerId     Int   @unique // References User.tornId (director)
   
   // Company settings
   hasTCP      Boolean  @default(false)  // Toggle for TCP availability
@@ -82,7 +82,7 @@ model Company {
   updatedAt   DateTime @updatedAt
   
   // Relations
-  owner          User               @relation("CompanyOwner", fields: [ownerId], references: [id])
+  owner          User               @relation("CompanyOwner", fields: [ownerId], references: [tornId])
   employees      User[]             @relation("CompanyEmployee")
   purchases      Purchase[]
   trainingRequests TrainingRequest[]

@@ -19,7 +19,7 @@ CREATE TABLE "companies" (
     "tornId" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "companyType" INTEGER NOT NULL,
-    "ownerId" TEXT NOT NULL,
+    "ownerId" INTEGER NOT NULL,
     "hasTCP" BOOLEAN NOT NULL DEFAULT false,
     "hasTGP" BOOLEAN NOT NULL DEFAULT false,
     "advertising" TEXT,
@@ -47,7 +47,7 @@ CREATE TABLE "companies" (
     "lastSynced" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "companies_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "companies_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users" ("tornId") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
