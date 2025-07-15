@@ -17,11 +17,98 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // Relations
-  training    Training[]
-  sessions    TrainingSession[]
+  // Company relations
+  ownedCompany    Company? @relation("CompanyOwner")
+  employeeOf      Company? @relation("CompanyEmployee", fields: [companyId], references: [id])
+  companyId       String?
+  
+  // Company role: "director", "employee", "trains_buyer"
+  companyRole     String?  
+  
+  // Existing relations
+  training           Training[]
+  sessions           TrainingSession[]
+  trainingRequests   TrainingRequest[] @relation("RequestedBy")
   
   @@map("users")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  tornId      Int      @unique  // Company ID from Torn API
+  name        String
+  companyType Int      // Company type number from Torn API
+  ownerId     String   @unique // References User.id (director)
+  
+  // Company settings
+  hasTCP      Boolean  @default(false)  // Toggle for TCP availability
+  hasTGP      Boolean  @default(false)  // Toggle for TGP availability
+  advertising String?  // "390k per train", etc.
+  
+  // Company resources (from Torn API)
+  trainsAvailable Int?     // Current trains in company
+  companyBank     BigInt?  // Company cash (using BigInt for large amounts)
+  companyFunds    BigInt?  // Same as bank but keeping both for API compatibility
+  popularity      Int?     // Company popularity
+  efficiency      Int?     // Company efficiency
+  environment     Int?     // Company environment
+  
+  // Metadata
+  isActive    Boolean  @default(true)
+  lastSynced  DateTime? // Last time we synced with Torn API
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  owner          User               @relation("CompanyOwner", fields: [ownerId], references: [id])
+  employees      User[]             @relation("CompanyEmployee")
+  purchases      Purchase[]
+  trainingRequests TrainingRequest[]
+  
+  @@map("companies")
+}
+
+model Purchase {
+  id              String   @id @default(cuid())
+  companyId       String
+  trainsPurchased Int      // Manual entry by admin
+  purchaseDate    DateTime @default(now())
+  notes           String?  // Optional notes about the purchase
+  purchasedBy     String   // Admin user ID who recorded this
+  
+  // Relations
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("purchases")
+}
+
+model TrainingRequest {
+  id           String   @id @default(cuid())
+  companyId    String
+  requestedBy  String   // User ID of trains buyer
+  stat         String   // "Manual Labor", "Intelligence", "Endurance"
+  quantity     Int      // Number of trains requested
+  targetLevel  Int?     // Optional target level
+  notes        String?  // Request notes
+  
+  // Status tracking
+  status       String   @default("pending") // "pending", "approved", "rejected", "completed"
+  approvedBy   String?  // Admin user ID
+  approvedAt   DateTime?
+  
+  // Payment tracking
+  paymentReceived Boolean @default(false)
+  paymentAmount   Float?
+  paymentDate     DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  buyer        User     @relation("RequestedBy", fields: [requestedBy], references: [id])
+  
+  @@map("training_requests")
 }
 
 model Training {

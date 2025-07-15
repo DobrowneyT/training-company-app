@@ -1,10 +1,10 @@
 /**
- * Database Seed Script - Creates initial data for development and production
+ * Database Seed Script - Creates initial data for multi-company system
  * Compatible with both SQLite (local) and PostgreSQL (production)
  * 
  * @file backend/prisma/seed.js
  * @author Training Company App
- * @version 1.0.0
+ * @version 2.0.0 (Multi-Company Support)
  */
 
 const { PrismaClient } = require('@prisma/client');
@@ -17,95 +17,208 @@ const prisma = new PrismaClient();
  * Main seeding function
  */
 async function main() {
-  console.log('🌱 Starting database seeding...');
+  console.log('🌱 Starting database seeding for multi-company system...');
 
   try {
-    // Create default admin user
-    const hashedPassword = await bcrypt.hash('admin123', 12);
+    // Create MonChoon admin user
+    const monChoonPassword = await bcrypt.hash('!@$$1122', 12);
     
-    const admin = await prisma.adminUser.upsert({
-      where: { username: 'admin' },
+    const monChoonAdmin = await prisma.adminUser.upsert({
+      where: { username: 'MonChoon' },
       update: {
-        password: hashedPassword,
-        email: 'admin@trainingcompany.local',
+        password: monChoonPassword,
+        email: 'monchoon@trainingcompany.local',
         isActive: true,
         lastLogin: new Date()
       },
       create: {
+        username: 'MonChoon',
+        password: monChoonPassword,
+        email: 'monchoon@trainingcompany.local',
+        role: 'admin',
+        isActive: true
+      }
+    });
+
+    console.log('✅ MonChoon admin user created/updated:', {
+      id: monChoonAdmin.id,
+      username: monChoonAdmin.username,
+      email: monChoonAdmin.email
+    });
+
+    // Keep the original admin user as well
+    const defaultAdminPassword = await bcrypt.hash('admin123', 12);
+    
+    const defaultAdmin = await prisma.adminUser.upsert({
+      where: { username: 'admin' },
+      update: {
+        password: defaultAdminPassword,
+        email: 'admin@trainingcompany.local',
+        isActive: true
+      },
+      create: {
         username: 'admin',
-        password: hashedPassword,
+        password: defaultAdminPassword,
         email: 'admin@trainingcompany.local',
         role: 'admin',
         isActive: true
       }
     });
 
-    console.log('✅ Admin user created/updated:', {
-      id: admin.id,
-      username: admin.username,
-      email: admin.email
+    console.log('✅ Default admin user maintained:', {
+      id: defaultAdmin.id,
+      username: defaultAdmin.username
     });
 
-    // Create sample user for testing (only in development)
+    // Create sample company data for development (only in non-production)
     if (process.env.NODE_ENV !== 'production') {
-      // Generate a sample encrypted API key
-      const sampleApiKey = 'abcd1234efgh5678'; // 16 character sample
+      // Create MonChoon as a user first
+      const sampleApiKey = 'QMUI7c4GHnIP9A57'; // Sample key from your example
       const encryptedApiKey = encrypt(sampleApiKey);
       
-      const sampleUser = await prisma.user.upsert({
-        where: { tornId: 999999 },
+      const monChoonUser = await prisma.user.upsert({
+        where: { tornId: 2250591 },
         update: {
-          name: 'Test User',
+          name: 'MonChoon',
           apiKey: encryptedApiKey,
-          isActive: true
+          isActive: true,
+          companyRole: 'director'
         },
         create: {
-          tornId: 999999,
-          name: 'Test User',
+          tornId: 2250591,
+          name: 'MonChoon',
           apiKey: encryptedApiKey,
-          isActive: true
+          isActive: true,
+          companyRole: 'director'
         }
       });
 
-      console.log('✅ Sample user created/updated:', {
-        id: sampleUser.id,
-        name: sampleUser.name,
-        tornId: sampleUser.tornId
+      console.log('✅ MonChoon user created/updated:', {
+        id: monChoonUser.id,
+        name: monChoonUser.name,
+        tornId: monChoonUser.tornId
       });
 
-      // Create sample training assignment for test user
-      const existingTraining = await prisma.training.findFirst({
-        where: { userId: sampleUser.id, isActive: true }
+      // Create Eagle Tavern company
+      const eagleTavern = await prisma.company.upsert({
+        where: { tornId: 88799 },
+        update: {
+          name: 'Eagle Tavern',
+          companyType: 25,
+          ownerId: monChoonUser.id,
+          hasTCP: true,
+          hasTGP: true,
+          advertising: 'Premium training services available',
+          trainsAvailable: 0,
+          companyBank: BigInt(559240948),
+          companyFunds: BigInt(559240948),
+          popularity: 87,
+          efficiency: 100,
+          environment: 98,
+          lastSynced: new Date()
+        },
+        create: {
+          tornId: 88799,
+          name: 'Eagle Tavern',
+          companyType: 25,
+          ownerId: monChoonUser.id,
+          hasTCP: true,
+          hasTGP: true,
+          advertising: 'Premium training services available',
+          trainsAvailable: 0,
+          companyBank: BigInt(559240948),
+          companyFunds: BigInt(559240948),
+          popularity: 87,
+          efficiency: 100,
+          environment: 98,
+          lastSynced: new Date()
+        }
       });
 
-      if (!existingTraining) {
-        const sampleTraining = await prisma.training.create({
-          data: {
-            userId: sampleUser.id,
-            currentStat: 'Not Assigned',
-            trainsRemaining: 0,
-            notes: 'Sample training assignment for testing'
+      console.log('✅ Eagle Tavern company created/updated:', {
+        id: eagleTavern.id,
+        name: eagleTavern.name,
+        tornId: eagleTavern.tornId
+      });
+
+      // Update MonChoon's company association
+      await prisma.user.update({
+        where: { id: monChoonUser.id },
+        data: { companyId: eagleTavern.id }
+      });
+
+      // Create some sample employees from your API response
+      const sampleEmployees = [
+        { tornId: 343124, name: 'M3G47HR0N', role: 'employee' },
+        { tornId: 1137061, name: 'Rohnn', role: 'employee' },
+        { tornId: 1624592, name: 'HoongZai', role: 'employee' },
+        { tornId: 1809952, name: 'justeat', role: 'trains_buyer' }, // Designated as trains buyer
+      ];
+
+      for (const emp of sampleEmployees) {
+        const sampleEmpApiKey = `sample${emp.tornId}key1234`.substring(0, 16);
+        const encryptedEmpApiKey = encrypt(sampleEmpApiKey);
+        
+        const employee = await prisma.user.upsert({
+          where: { tornId: emp.tornId },
+          update: {
+            name: emp.name,
+            apiKey: encryptedEmpApiKey,
+            isActive: true,
+            companyId: eagleTavern.id,
+            companyRole: emp.role
+          },
+          create: {
+            tornId: emp.tornId,
+            name: emp.name,
+            apiKey: encryptedEmpApiKey,
+            isActive: true,
+            companyId: eagleTavern.id,
+            companyRole: emp.role
           }
         });
 
-        console.log('✅ Sample training assignment created:', {
-          id: sampleTraining.id,
-          currentStat: sampleTraining.currentStat
-        });
+        console.log(`✅ Employee ${emp.name} created/updated with role: ${emp.role}`);
+      }
 
-        // Create sample training session log
-        await prisma.trainingSession.create({
+      // Create sample purchase record
+      const samplePurchase = await prisma.purchase.create({
+        data: {
+          companyId: eagleTavern.id,
+          trainsPurchased: 500,
+          notes: 'Initial training purchase for company setup',
+          purchasedBy: monChoonAdmin.id
+        }
+      });
+
+      console.log('✅ Sample purchase record created:', {
+        id: samplePurchase.id,
+        trainsPurchased: samplePurchase.trainsPurchased
+      });
+
+      // Create sample training request
+      const trainsBuyer = await prisma.user.findFirst({
+        where: { companyRole: 'trains_buyer' }
+      });
+
+      if (trainsBuyer) {
+        const sampleRequest = await prisma.trainingRequest.create({
           data: {
-            userId: sampleUser.id,
-            trainingId: sampleTraining.id,
-            type: 'assignment_created',
-            notes: 'Initial sample training assignment created during seeding'
+            companyId: eagleTavern.id,
+            requestedBy: trainsBuyer.id,
+            stat: 'Manual Labor',
+            quantity: 50,
+            targetLevel: 1000000,
+            notes: 'Need training for upcoming project',
+            status: 'pending'
           }
         });
 
-        console.log('✅ Sample training session logged');
-      } else {
-        console.log('ℹ️  Sample training assignment already exists');
+        console.log('✅ Sample training request created:', {
+          id: sampleRequest.id,
+          stat: sampleRequest.stat,
+          quantity: sampleRequest.quantity
+        });
       }
     }
 
@@ -114,17 +227,21 @@ async function main() {
     // Display summary
     const userCount = await prisma.user.count();
     const adminCount = await prisma.adminUser.count();
-    const trainingCount = await prisma.training.count();
+    const companyCount = await prisma.company.count();
+    const purchaseCount = await prisma.purchase.count();
+    const requestCount = await prisma.trainingRequest.count();
 
     console.log('\n📊 Database Summary:');
     console.log(`   👥 Users: ${userCount}`);
     console.log(`   🔐 Admin Users: ${adminCount}`);
-    console.log(`   🏋️  Training Assignments: ${trainingCount}`);
+    console.log(`   🏢 Companies: ${companyCount}`);
+    console.log(`   💰 Purchase Records: ${purchaseCount}`);
+    console.log(`   📋 Training Requests: ${requestCount}`);
     
     if (process.env.NODE_ENV !== 'production') {
-      console.log('\n🔑 Test Credentials:');
-      console.log('   Admin Login: username=admin, password=admin123');
-      console.log('   Sample API Key: abcd1234efgh5678 (16 chars)');
+      console.log('\n🔑 Admin Credentials:');
+      console.log('   MonChoon: username=MonChoon, password=!@$$1122');
+      console.log('   Default: username=admin, password=admin123');
     }
 
   } catch (error) {
