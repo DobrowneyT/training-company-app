@@ -7,14 +7,16 @@
 const express = require('express');
 const clientRoutes = require('./client');
 const adminRoutes = require('./admin');
+const debugRoutes = require('./debug');
 
 const router = express.Router();
 
 /**
  * Mount route modules
- */
+*/
 router.use('/client', clientRoutes);
 router.use('/admin', adminRoutes);
+router.use('/debug', debugRoutes);
 
 /**
  * API information endpoint
