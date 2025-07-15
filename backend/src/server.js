@@ -1,13 +1,14 @@
 /**
- * @fileoverview Enhanced Express server with BigInt serialization support
- * @description Main server file with global BigInt handling
- * @version 2.0.0
+ * @fileoverview Enhanced Express server with BigInt serialization support and frontend serving
+ * @description Main server file with global BigInt handling and React app serving
+ * @version 2.1.0
  */
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const routes = require('./routes');
 const { setupBigIntSerialization, bigIntMiddleware } = require('./utils/bigIntSerializer');
 require('dotenv').config();
@@ -32,7 +33,7 @@ app.use(helmet({
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.railway.app'] 
+    ? ['https://training-company-app-production.up.railway.app'] 
     : ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true
 }));
@@ -46,6 +47,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Global BigInt serialization middleware
 app.use(bigIntMiddleware);
 
+// Serve static files from React build (frontend/dist)
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
 // API routes
 app.use('/api', routes);
 
@@ -54,19 +59,27 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
+    version: '2.1.0',
     environment: process.env.NODE_ENV || 'development',
-    bigIntSupport: 'enabled'
+    bigIntSupport: 'enabled',
+    staticFiles: 'enabled',
+    frontendPath: frontendPath
   });
 });
 
-// 404 handler for unmatched routes
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: 'Endpoint not found',
-    path: req.originalUrl,
-    method: req.method
-  });
+// Catch-all handler for React Router (must be after API routes)
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ 
+      error: 'API endpoint not found',
+      path: req.originalUrl,
+      method: req.method
+    });
+  }
+  
+  // Serve React app for all other routes
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Global error handling middleware
@@ -114,5 +127,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Enhanced server running on port ${PORT}`);
   console.log(`📋 API documentation: http://localhost:${PORT}/api`);
   console.log(`🔢 BigInt serialization: enabled`);
+  console.log(`📁 Frontend static files: ${frontendPath}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
