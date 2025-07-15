@@ -1,46 +1,52 @@
+/**
+ * @fileoverview Enhanced Express server with BigInt serialization support
+ * @description Main server file with global BigInt handling
+ * @version 2.0.0
+ */
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const path = require('path');
 const routes = require('./routes');
+const { setupBigIntSerialization, bigIntMiddleware } = require('./utils/bigIntSerializer');
 require('dotenv').config();
+
+// Setup global BigInt serialization before anything else
+setupBigIntSerialization();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-/**
- * CORS Configuration - Fixed to allow Vite development server
- */
-const corsOptions = {
-  origin: [
-    'http://localhost:5173',  // Vite dev server (default)
-    'http://localhost:3000',  // Create React App (backup)
-    'http://localhost:4173',  // Vite preview server
-    'http://127.0.0.1:5173',  // Alternative localhost
-    'http://127.0.0.1:3000',  // Alternative localhost
-    'http://127.0.0.1:4173'   // Alternative localhost
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-};
-
-// Middleware
+// Security and basic middleware
 app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false // Disable CSP for serving static files
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
 }));
-app.use(cors(corsOptions));
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-domain.railway.app'] 
+    : ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true
+}));
+
 app.use(morgan('combined'));
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from frontend build
-app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+// Global BigInt serialization middleware
+app.use(bigIntMiddleware);
 
-// API Routes
+// API routes
 app.use('/api', routes);
 
 // Health check endpoint
@@ -48,34 +54,65 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    port: PORT,
-    cors: 'enabled'
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    bigIntSupport: 'enabled'
   });
 });
 
-// Catch-all handler: send back React's index.html file for client-side routing
-app.get('*', (req, res) => {
-  // Don't serve index.html for API routes
-  if (req.path.startsWith('/api/') || req.path === '/health') {
-    return res.status(404).json({ error: 'Endpoint not found' });
+// 404 handler for unmatched routes
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint not found',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  
+  // Handle BigInt serialization errors specifically
+  if (err.message && err.message.includes('BigInt')) {
+    console.error('BigInt serialization error:', err);
+    return res.status(500).json({ 
+      error: 'Data serialization error',
+      message: 'Large number formatting issue'
+    });
   }
   
-  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+  // Handle Prisma errors
+  if (err.code && err.code.startsWith('P')) {
+    console.error('Prisma error:', err.code, err.message);
+    return res.status(500).json({ 
+      error: 'Database error',
+      message: 'Database operation failed'
+    });
+  }
+  
+  // Generic error response
+  res.status(err.status || 500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    ...(process.env.NODE_ENV === 'development' && { details: err.message })
-  });
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Enhanced server running on port ${PORT}`);
   console.log(`📋 API documentation: http://localhost:${PORT}/api`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌐 Frontend served from: http://localhost:${PORT}/`);
+  console.log(`🔢 BigInt serialization: enabled`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

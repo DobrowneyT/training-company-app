@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * Smart Database Setup Script - Fixed Schema Provider Update
- * Dynamically handles SQLite/PostgreSQL without overwriting schema
+ * Enhanced Smart Database Setup Script
+ * Supports the new enhanced schema with detailed company tracking
  * 
  * @file backend/scripts/setup-database.js
  * @author Training Company App
- * @version 2.0.1 (Fixed Provider Update)
+ * @version 3.0.0 (Enhanced Schema Support)
  */
 
 const { execSync } = require('child_process');
@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Console logging with emoji prefixes
+ * Console logging with consistent prefixes
  */
 function log(message, type = 'info') {
   const prefixes = {
@@ -78,8 +78,8 @@ function updateSchemaProvider(provider) {
   const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
   
   if (!fs.existsSync(schemaPath)) {
-    log('Schema file does not exist, creating complete schema', 'warn');
-    createCompleteSchema(provider);
+    log('Schema file does not exist, creating enhanced schema', 'warn');
+    createEnhancedSchema(provider);
     return;
   }
   
@@ -105,8 +105,8 @@ function updateSchemaProvider(provider) {
       fs.writeFileSync(schemaPath, schemaContent);
       log(`Updated datasource provider to ${provider}`, 'success');
     } else {
-      log('Could not find datasource provider in schema, creating new schema', 'warn');
-      createCompleteSchema(provider);
+      log('Could not find datasource provider in schema, creating enhanced schema', 'warn');
+      createEnhancedSchema(provider);
     }
     
   } catch (error) {
@@ -116,17 +116,17 @@ function updateSchemaProvider(provider) {
 }
 
 /**
- * Create complete schema with all company models
+ * Create complete enhanced schema with all models for detailed company tracking
  */
-function createCompleteSchema(provider) {
+function createEnhancedSchema(provider) {
   const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
   
-  const completeSchema = `generator client {
+  const enhancedSchema = `generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "${provider}"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -146,12 +146,16 @@ model User {
   companyId       String?
   
   // Company role: "director", "employee", "trains_buyer"
-  companyRole     String?  
+  companyRole     String?
   
   // Existing relations
   training           Training[]
   sessions           TrainingSession[]
   trainingRequests   TrainingRequest[] @relation("RequestedBy")
+  
+  // New relations for detailed tracking
+  employeeDetails    EmployeeDetails?
+  trainingLogs       TrainingLog[] @relation("TrainedEmployee")
   
   @@map("users")
 }
@@ -168,13 +172,31 @@ model Company {
   hasTGP      Boolean  @default(false)  // Toggle for TGP availability
   advertising String?  // "390k per train", etc.
   
-  // Company resources (from Torn API)
+  // Company resources (from Torn API) - Using String for BigInt values to avoid SQLite issues
   trainsAvailable Int?     // Current trains in company
-  companyBank     BigInt?  // Company cash (using BigInt for large amounts)
-  companyFunds    BigInt?  // Same as bank but keeping both for API compatibility
+  companyBank     String?  // Company cash as string (was BigInt)
+  companyFunds    String?  // Same as bank but keeping both for API compatibility (was BigInt)
   popularity      Int?     // Company popularity
   efficiency      Int?     // Company efficiency
   environment     Int?     // Company environment
+  value           String?  // Company total value as string (was companyValue BigInt)
+  
+  // Company performance metrics
+  dailyIncome     Int?     // Daily income
+  dailyCustomers  Int?     // Daily customers
+  weeklyIncome    Int?     // Weekly income
+  weeklyCustomers Int?     // Weekly customers
+  employeesHired  Int?     // Current employee count
+  employeesCapacity Int?   // Maximum employees
+  daysOld         Int?     // Company age in days
+  rating          Int?     // Company rating
+  
+  // Company upgrades
+  companySize     Int?     // Company size upgrade level
+  staffroomSize   String?  // Staff room description
+  storageSize     String?  // Storage room description
+  storageSpace    Int?     // Storage space available
+  advertisingBudget String? // Advertising budget as string (was BigInt)
   
   // Metadata
   isActive    Boolean  @default(true)
@@ -187,8 +209,104 @@ model Company {
   employees      User[]             @relation("CompanyEmployee")
   purchases      Purchase[]
   trainingRequests TrainingRequest[]
+  employeeDetails EmployeeDetails[]
+  trainingLogs   TrainingLog[]
+  companyNews    CompanyNews[]
   
   @@map("companies")
+}
+
+model EmployeeDetails {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  companyId   String
+  
+  // Employee info from Torn API
+  position    String   // "Bartender", "Manager", "Director", etc.
+  daysInCompany Int    // Days working at company
+  wage        Int      @default(0)
+  
+  // Work stats
+  manualLabor   Int     @default(0)
+  intelligence  Int     @default(0)
+  endurance     Int     @default(0)
+  
+  // Effectiveness breakdown
+  workingStats       Int @default(0)  // Base effectiveness from stats
+  settledIn         Int @default(0)   // Settled in bonus
+  directorEducation Int @default(0)   // Director education bonus
+  merits            Int @default(0)   // Merit bonuses
+  addiction         Int @default(0)   // Addiction penalty (negative)
+  totalEffectiveness Int @default(0)  // Total effectiveness
+  
+  // Status tracking
+  lastActionStatus    String?  // "Online", "Offline", "Idle"
+  lastActionTimestamp Int?     // Unix timestamp
+  lastActionRelative  String?  // "2 hours ago"
+  statusDescription   String?  // "Okay", "Traveling to Switzerland"
+  statusDetails       String?  // Additional status info
+  statusState         String?  // "Okay", "Traveling", etc.
+  statusColor         String?  // "green", "blue", etc.
+  statusUntil         Int?     // Status expiry timestamp
+  
+  // Metadata
+  lastUpdated DateTime @default(now())
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("employee_details")
+}
+
+model TrainingLog {
+  id          String   @id @default(cuid())
+  companyId   String
+  trainedById String   // User ID of the employee who was trained
+  
+  // Training event details
+  eventId     String   @unique // The unique key from Torn API news
+  timestamp   Int      // Unix timestamp from API
+  position    String   // Employee position when trained
+  
+  // Stat gains (if we can determine them)
+  manualLaborGained Int @default(0)
+  intelligenceGained Int @default(0)
+  enduranceGained   Int @default(0)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trainedBy   User     @relation("TrainedEmployee", fields: [trainedById], references: [id])
+  
+  @@map("training_logs")
+}
+
+model CompanyNews {
+  id          String   @id @default(cuid())
+  companyId   String
+  
+  // News details from API
+  newsId      String   @unique // The unique key from API
+  newsText    String   // The news content
+  timestamp   Int      // Unix timestamp
+  newsType    String   // "training", "daily_report", "other"
+  
+  // Parsed data (if it's a training event)
+  employeeId  Int?     // Torn ID of employee (extracted from news)
+  employeeName String? // Employee name (extracted from news)
+  position    String?  // Position (extracted from news)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@map("company_news")
 }
 
 model Purchase {
@@ -296,8 +414,8 @@ model SystemLog {
 }
 `;
 
-  fs.writeFileSync(schemaPath, completeSchema);
-  log(`Created complete schema with ${provider} provider`, 'success');
+  fs.writeFileSync(schemaPath, enhancedSchema);
+  log(`Created enhanced schema with ${provider} provider`, 'success');
 }
 
 /**
@@ -345,7 +463,7 @@ function setupSQLiteDatabase() {
   // Create or apply migrations
   const migrationsDir = path.join(__dirname, '../prisma/migrations');
   if (!fs.existsSync(migrationsDir) || fs.readdirSync(migrationsDir).length === 0) {
-    execCommand('npx prisma migrate dev --name init --skip-generate', 'Creating initial migration');
+    execCommand('npx prisma migrate dev --name enhanced_schema_init --skip-generate', 'Creating enhanced schema migration');
   } else {
     execCommand('npx prisma migrate deploy', 'Applying existing migrations');
   }
@@ -368,7 +486,7 @@ function setupPostgreSQLDatabase() {
     },
     {
       command: 'npx prisma db push',
-      description: 'Pushing schema directly'
+      description: 'Pushing enhanced schema directly'
     }
   ];
   
@@ -389,7 +507,7 @@ function setupPostgreSQLDatabase() {
  * Main setup function
  */
 function setupDatabase(environment) {
-  log(`Starting database setup for ${environment}`, 'info');
+  log(`Starting enhanced database setup for ${environment}`, 'info');
   log(`Node.js: ${process.version}`, 'info');
   log(`Working directory: ${process.cwd()}`, 'info');
   
@@ -407,15 +525,15 @@ function setupDatabase(environment) {
     }
     
     // Step 3: Generate Prisma client
-    execCommand('npx prisma generate', 'Generating Prisma client');
+    execCommand('npx prisma generate', 'Generating enhanced Prisma client');
     
-    // Step 4: Seed database (optional)
-    execCommand('npx prisma db seed', 'Seeding database', true);
+    // Step 4: Seed database with enhanced data
+    execCommand('npx prisma db seed', 'Seeding enhanced database', true);
     
-    log('Database setup completed successfully!', 'success');
+    log('Enhanced database setup completed successfully!', 'success');
     
   } catch (error) {
-    log(`Database setup failed: ${error.message}`, 'error');
+    log(`Enhanced database setup failed: ${error.message}`, 'error');
     process.exit(1);
   }
 }
@@ -424,8 +542,8 @@ function setupDatabase(environment) {
  * Main execution
  */
 function main() {
-  log('Smart Database Setup v2.0.1 (Fixed Provider Update)', 'info');
-  log('================================', 'info');
+  log('Enhanced Smart Database Setup v3.0.0', 'info');
+  log('======================================', 'info');
   
   const environment = detectEnvironment();
   
