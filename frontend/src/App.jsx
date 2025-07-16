@@ -16,6 +16,9 @@ import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import DebugCardTest from './components/DebugCardTest';
+
+
 
 /**
  * Protected Admin Route Component
@@ -85,6 +88,9 @@ function App() {
           {/* Admin Dashboard Routes */}
           <Route path="/admin" element={<AdminApp />} />
           <Route path="/admin/*" element={<AdminApp />} />
+
+          // Add a route or replace your current dashboard temporarily
+          <Route path="/debug" element={<DebugCardTest />} />
           
           {/* Fallback for unknown routes */}
           <Route path="*" element={<Navigate to="/client" replace />} />
