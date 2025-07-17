@@ -1,17 +1,17 @@
 /**
- * Client Context Provider - Complete state management for client authentication and data
- * Handles API key verification, user data, training status, and work stats
+ * Client Context Provider - State management for trains buyers (clients)
+ * Handles API key verification, training data, and train requests
  * 
  * @file src/context/ClientContext.jsx
  * @author Training Company App
- * @version 2.0.0
+ * @version 1.0.0
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
 
 /**
- * Client context for managing user authentication and training data
+ * Client context for managing trains buyer authentication and data
  */
 const ClientContext = createContext();
 
@@ -29,23 +29,29 @@ export const useClient = () => {
 };
 
 /**
- * Client provider component for managing authentication and user data
+ * Client provider component for managing trains buyer authentication and data
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components
  */
 export const ClientProvider = ({ children }) => {
   // Authentication state
-  const [user, setUser] = useState(null);
+  const [client, setClient] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   
-  // Training and stats data
-  const [training, setTraining] = useState(null);
-  const [currentStats, setCurrentStats] = useState(null);
+  // Training data
+  const [trainingData, setTrainingData] = useState(null);
+  const [trainingHistory, setTrainingHistory] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  
+  // Company data (relevant to client)
+  const [companyInfo, setCompanyInfo] = useState(null);
   
   // UI state management
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [requestingTrains, setRequestingTrains] = useState(false);
 
   /**
    * Clear error state
@@ -55,7 +61,7 @@ export const ClientProvider = ({ children }) => {
   }, []);
 
   /**
-   * Verify Torn API key and authenticate user
+   * Verify Torn API key and authenticate client
    * @param {string} apiKey - 16-character Torn API key
    * @returns {Promise<Object>} Result object with success status and error message if any
    */
@@ -69,20 +75,24 @@ export const ClientProvider = ({ children }) => {
         throw new Error('API key must be exactly 16 characters');
       }
 
-      // Verify with backend
+      // Verify with backend - check if user is a trains buyer
       const result = await apiService.verifyClient(apiKey);
       
       if (result.success) {
-        const userData = result.user;
-        setUser(userData);
+        const clientData = result.client;
+        const companyData = result.company;
+        
+        setClient(clientData);
+        setCompanyInfo(companyData);
         setIsAuthenticated(true);
         
-        // Store user data in localStorage for persistence
-        localStorage.setItem('client_user', JSON.stringify(userData));
+        // Store client data in localStorage for persistence
+        localStorage.setItem('client_user', JSON.stringify(clientData));
+        localStorage.setItem('client_company', JSON.stringify(companyData));
         localStorage.setItem('client_authenticated', 'true');
         
-        // Load dashboard data immediately after authentication
-        await loadDashboardData(userData.tornId);
+        // Load full dashboard data after authentication
+        await loadClientDashboard(clientData.tornId);
         
         return { success: true };
       } else {
@@ -91,7 +101,7 @@ export const ClientProvider = ({ children }) => {
         return { success: false, error: errorMessage };
       }
     } catch (error) {
-      console.error('API key verification error:', error);
+      console.error('Client API key verification error:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Connection error. Please try again.';
       setError(errorMessage);
       return { success: false, error: errorMessage };
@@ -101,38 +111,119 @@ export const ClientProvider = ({ children }) => {
   };
 
   /**
-   * Load complete dashboard data for authenticated user
-   * @param {number} tornId - User's Torn City ID
+   * Load complete client dashboard data
+   * @param {number} tornId - Client's Torn City ID
    */
-  const loadDashboardData = async (tornId) => {
+  const loadClientDashboard = async (tornId) => {
     try {
-      const result = await apiService.getClientDashboard(tornId);
+      const [trainingResult, historyResult, analyticsResult] = await Promise.all([
+        apiService.getClientTrainingData(tornId),
+        apiService.getClientTrainingHistory(tornId),
+        apiService.getClientAnalytics(tornId)
+      ]);
       
-      if (result.success) {
-        setTraining(result.data.training);
-        setCurrentStats(result.data.currentStats);
-        setLastUpdated(new Date());
-      } else {
-        console.error('Failed to load dashboard data:', result.error);
-        setError('Failed to load training data. Please refresh the page.');
+      if (trainingResult.success) {
+        setTrainingData(trainingResult.data);
       }
+      
+      if (historyResult.success) {
+        setTrainingHistory(historyResult.data);
+      }
+      
+      if (analyticsResult.success) {
+        setAnalytics(analyticsResult.data);
+      }
+      
+      setLastUpdated(new Date());
     } catch (error) {
-      console.error('Dashboard data loading error:', error);
-      setError('Connection error while loading data. Please check your internet connection.');
+      console.error('Client dashboard data loading error:', error);
+      setError('Failed to load training data. Please refresh the page.');
     }
   };
 
   /**
-   * Refresh all user data
+   * Request more trains from the company
+   * @param {Object} requestData - Request details
+   * @param {string} requestData.stat - Training stat (Manual Labor, Intelligence, Endurance)
+   * @param {number} requestData.quantity - Number of trains requested
+   * @param {number} requestData.targetLevel - Target level (optional)
+   * @param {string} requestData.notes - Additional notes (optional)
+   * @returns {Promise<Object>} Result object with success status
+   */
+  const requestTrains = async (requestData) => {
+    if (!client) {
+      setError('No client data available');
+      return { success: false, error: 'No client data available' };
+    }
+
+    setRequestingTrains(true);
+    setError(null);
+
+    try {
+      const result = await apiService.requestTrains({
+        tornId: client.tornId,
+        companyId: companyInfo.id,
+        ...requestData
+      });
+      
+      if (result.success) {
+        // Refresh training data after request
+        await loadClientDashboard(client.tornId);
+        return { success: true, data: result.data };
+      } else {
+        const errorMessage = result.error || 'Train request failed';
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      }
+    } catch (error) {
+      console.error('Train request error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Train request failed';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setRequestingTrains(false);
+    }
+  };
+
+  /**
+   * Calculate analytics for custom date range
+   * @param {Date} startDate - Start date for analytics
+   * @param {Date} endDate - End date for analytics
+   * @returns {Promise<Object>} Analytics data for the specified range
+   */
+  const calculateAnalytics = async (startDate, endDate) => {
+    if (!client) {
+      return { success: false, error: 'No client data available' };
+    }
+
+    try {
+      const result = await apiService.getClientAnalytics(client.tornId, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      
+      if (result.success) {
+        return { success: true, data: result.data };
+      } else {
+        return { success: false, error: result.error || 'Analytics calculation failed' };
+      }
+    } catch (error) {
+      console.error('Analytics calculation error:', error);
+      return { success: false, error: 'Analytics calculation failed' };
+    }
+  };
+
+  /**
+   * Refresh all client data
    * @returns {Promise<void>}
    */
   const refreshData = useCallback(async () => {
-    if (user && isAuthenticated) {
+    if (client && isAuthenticated) {
       setLoading(true);
       setError(null);
       
       try {
-        await loadDashboardData(user.tornId);
+        await loadClientDashboard(client.tornId);
       } catch (error) {
         console.error('Data refresh error:', error);
         setError('Failed to refresh data. Please try again.');
@@ -140,59 +231,72 @@ export const ClientProvider = ({ children }) => {
         setLoading(false);
       }
     }
-  }, [user, isAuthenticated]);
+  }, [client, isAuthenticated]);
 
   /**
-   * Logout user and clear all data
+   * Logout client and clear all data
    */
   const logout = useCallback(() => {
-    setUser(null);
+    setClient(null);
+    setCompanyInfo(null);
+    setTrainingData(null);
+    setTrainingHistory([]);
+    setAnalytics(null);
     setIsAuthenticated(false);
-    setTraining(null);
-    setCurrentStats(null);
     setError(null);
     setLastUpdated(null);
+    setRequestingTrains(false);
     
     // Clear localStorage
     localStorage.removeItem('client_user');
+    localStorage.removeItem('client_company');
     localStorage.removeItem('client_authenticated');
   }, []);
 
   /**
-   * Auto-refresh data every 5 minutes when authenticated
+   * Auto-refresh data every 15 minutes when authenticated
    */
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && client) {
       const interval = setInterval(() => {
         refreshData();
-      }, 5 * 60 * 1000); // 5 minutes
+      }, 15 * 60 * 1000); // 15 minutes
 
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, user, refreshData]);
+  }, [isAuthenticated, client, refreshData]);
 
   /**
-   * Load user from localStorage on component mount
+   * Load client from localStorage on component mount
    */
   useEffect(() => {
-    const savedUser = localStorage.getItem('client_user');
+    setInitializing(true);
+    
+    const savedClient = localStorage.getItem('client_user');
+    const savedCompany = localStorage.getItem('client_company');
     const savedAuth = localStorage.getItem('client_authenticated');
     
-    if (savedUser && savedAuth === 'true') {
+    if (savedClient && savedCompany && savedAuth === 'true') {
       try {
-        const userData = JSON.parse(savedUser);
-        setUser(userData);
+        const clientData = JSON.parse(savedClient);
+        const companyData = JSON.parse(savedCompany);
+        
+        setClient(clientData);
+        setCompanyInfo(companyData);
         setIsAuthenticated(true);
         
         // Load fresh data
-        loadDashboardData(userData.tornId);
+        loadClientDashboard(clientData.tornId);
       } catch (error) {
-        console.error('Error loading saved user data:', error);
+        console.error('Error loading saved client data:', error);
         // Clear corrupted data
         localStorage.removeItem('client_user');
+        localStorage.removeItem('client_company');
         localStorage.removeItem('client_authenticated');
       }
     }
+    
+    setInitializing(false);
   }, []);
 
   /**
@@ -200,20 +304,28 @@ export const ClientProvider = ({ children }) => {
    */
   const value = {
     // Authentication state
-    user,
+    client,
     isAuthenticated,
+    initializing,
     
-    // Data state
-    training,
-    currentStats,
-    lastUpdated,
+    // Training data
+    trainingData,
+    trainingHistory,
+    analytics,
+    
+    // Company data
+    companyInfo,
     
     // UI state
     loading,
     error,
+    lastUpdated,
+    requestingTrains,
     
     // Actions
     verifyApiKey,
+    requestTrains,
+    calculateAnalytics,
     refreshData,
     logout,
     clearError
